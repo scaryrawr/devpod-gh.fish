@@ -38,19 +38,16 @@ function devpod --description 'DevPod wrapper with automatic GitHub token inject
         end
     end
 
-    set -l portmonitor_pid
+    set -l pgid
     # Copy and start portmonitor.sh on the devpod if we have a selected_space
     if test -n "$selected_space"
         set -l _pf_log (mktemp -t devpod-portforward.$selected_space.XXXXXX.log)
         echo "[devpod-gh] Starting port forwarding monitor (log: $_pf_log)" >&2
         fish -c "_devpod_portforward $selected_space" >$_pf_log 2>&1 &
-        set portmonitor_pid (jobs -l -p | tail -n1)
-        disown $portmonitor_pid
-        echo "[devpod-gh] Port forwarding monitor started in background (log: $_pf_log)" >&2
+        set -l monitor_pid $last_pid
+        set pgid (ps -o pgid= -p $monitor_pid | string trim)
     end
 
     command devpod $args
-    if test -n "$portmonitor_pid"
-        kill $portmonitor_pid
-    end
+    kill -- -$pgid
 end
