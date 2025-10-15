@@ -1,7 +1,7 @@
 function _devpod_reverseforward --description 'Reverse forwarding of selfhosted LLMs'
     set -l selected_space $argv[1]
     if test -z "$selected_space"
-        echo "Usage: _devpod_portforward <workspace-name>" >&2
+        echo "Usage: _devpod_reverseforward <workspace-name>" >&2
         return 1
     end
 
