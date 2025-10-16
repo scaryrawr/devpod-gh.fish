@@ -1,4 +1,10 @@
 function devpod --description 'DevPod wrapper with automatic GitHub token injection and port forwarding'
+    # Skip our wrapper during tab completion (when __complete is called)
+    if contains -- __complete $argv
+        command devpod $argv
+        return
+    end
+
     # Skip gum selection if --help or -h is present, or non-interactive SSH flags
     if string match -q -- '*--help*' $argv; or string match -q -- '*-h*' $argv; or string match -q -- '*-L*' $argv; or string match -q -- '*--forward-local*' $argv; or string match -q -- '*-R*' $argv; or string match -q -- '*--forward-remote*' $argv; or string match -q -- '*-D*' $argv; or string match -q -- '*--forward-socks*' $argv; or string match -q -- '*-W*' $argv; or string match -q -- '*--forward-stdio*' $argv; or string match -q -- '*--command*' $argv
         command devpod $argv
