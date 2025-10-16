@@ -23,6 +23,15 @@ function devpod --description 'DevPod wrapper with automatic GitHub token inject
     set -a args --set-env
     set -a args GH_TOKEN=(gh auth token)
 
+    set -l config_home (test -n "$XDG_CONFIG_HOME"; and echo "$XDG_CONFIG_HOME"; or echo "$HOME/.config")
+    if test -f "$config_home/github-copilot/apps.json"
+        set -l copilot_token (jq -r '."github.com:Iv1.b507a08c87ecfe98".oauth_token // empty' "$config_home/github-copilot/apps.json")
+        if test -n "$copilot_token"
+            set -a args --set-env
+            set -a args GH_COPILOT_TOKEN=$copilot_token
+        end
+    end
+
     # Check if any space is already included in args
     set -l selected_space ""
     set -l space_found 0
