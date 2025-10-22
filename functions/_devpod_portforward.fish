@@ -10,7 +10,7 @@ function _devpod_portforward --description 'Manage automatic port forwarding for
     command devpod up --open-ide false $selected_space >/dev/null 2>&1
 
     # Copy monitoring script
-    set -l script_path (dirname (status --current-filename))/../portmonitor.sh
+    set -l script_path (dirname (status --current-filename))/portmonitor.sh
     set -l devpod_host "$selected_space.devpod"
     echo "[devpod-gh] Copying portmonitor script..." >&2
     scp -q $script_path $devpod_host:~/ 2>/dev/null
