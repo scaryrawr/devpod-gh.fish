@@ -25,6 +25,21 @@ This is a simple function wrapper around [devpod](https://github.com/loft-sh/dev
 fisher install scaryrawr/devpod-gh.fish
 ```
 
+## Configuration
+
+### SSH ControlMaster (Required for optimal performance)
+
+Configure SSH ControlMaster in your `~/.ssh/config` for optimal port forwarding performance:
+
+```ssh-config
+Host *
+  ControlMaster auto
+  ControlPath ~/.ssh/cm-%C
+  ControlPersist 10m
+```
+
+This enables connection multiplexing, which allows multiple SSH connections to share a single network connection. This significantly speeds up establishing new port forwards by avoiding repeated SSH handshakes and authentication.
+
 ## Features
 
 ### Automatic GitHub Token Injection
