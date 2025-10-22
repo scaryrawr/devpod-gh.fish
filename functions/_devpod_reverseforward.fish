@@ -12,12 +12,12 @@ function _devpod_reverseforward --description 'Reverse forwarding of selfhosted 
     begin
         if lsof -iTCP:1234 -sTCP:LISTEN -t &>/dev/null
             echo "[devpod-gh] Reverse forwarding lm studio..." >&2
-            command devpod ssh -R 1234 "$selected_space" </dev/null &
+            ssh -R 1234:localhost:1234 "$selected_space.devpod" -N </dev/null &
         end
 
         if lsof -iTCP:11434 -sTCP:LISTEN -t &>/dev/null
             echo "[devpod-gh] Reverse forwarding ollama..." >&2
-            command devpod ssh -R 11434 "$selected_space" </dev/null &
+            ssh -R 11434:localhost:11434 "$selected_space.devpod" -N </dev/null &
         end
         wait
     end

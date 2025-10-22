@@ -22,14 +22,14 @@ function _devpod_portforward --description 'Manage automatic port forwarding for
     echo "[devpod-gh] Starting SSH monitoring loop..." >&2
 
     # Start SSH monitoring loop
-    command devpod ssh --command 'exec stdbuf -oL bash ~/portmonitor.sh' $selected_space </dev/null 2>&1 | while read -l line
+    ssh "$selected_space.devpod" 'exec stdbuf -oL bash ~/portmonitor.sh' </dev/null 2>&1 | while read -l line
         echo "[devpod-gh] Received: $line" >&2
         set -l event_type (echo $line | jq -r '.type // empty')
         if test "$event_type" = port
             set -l action (echo $line | jq -r '.action // empty')
             set -l port (echo $line | jq -r '.port // empty')
             if test "$action" = bound -a -n "$port"
-                command devpod ssh -L $port $selected_space </dev/null >/dev/null 2>&1 &
+                ssh -L $port:localhost:$port "$selected_space.devpod" -N </dev/null >/dev/null 2>&1 &
                 set tunnel_pids[$port] $last_pid
                 echo "[devpod-gh] Port forwarding started: $port (PID: $forward_pid)" >&2
             else if test "$action" = unbound -a -n "$port"
