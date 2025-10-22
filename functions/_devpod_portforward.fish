@@ -31,7 +31,7 @@ function _devpod_portforward --description 'Manage automatic port forwarding for
             if test "$action" = bound -a -n "$port"
                 ssh -L $port:localhost:$port "$selected_space.devpod" -N </dev/null >/dev/null 2>&1 &
                 set tunnel_pids[$port] $last_pid
-                echo "[devpod-gh] Port forwarding started: $port (PID: $forward_pid)" >&2
+                echo "[devpod-gh] Port forwarding started: $port (PID: $last_pid)" >&2
             else if test "$action" = unbound -a -n "$port"
                 if set -q tunnel_pids[$port]
                     echo "Stopping tunnel for port $port"
