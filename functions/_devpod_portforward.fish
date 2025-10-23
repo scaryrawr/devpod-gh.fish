@@ -19,6 +19,7 @@ function _devpod_portforward --description 'Manage automatic port forwarding for
     echo "[devpod-gh] Starting SSH monitoring loop..." >&2
 
     # Start SSH monitoring loop
+    # Note: Uses SSH ControlMaster for multiplexing (see README for configuration)
     ssh "$selected_space.devpod" 'exec stdbuf -oL bash ~/portmonitor.sh' </dev/null 2>&1 | while read -l line
         echo "[devpod-gh] Received: $line" >&2
         set -l event_type (echo $line | jq -r '.type // empty')
@@ -27,10 +28,18 @@ function _devpod_portforward --description 'Manage automatic port forwarding for
             set -l port (echo $line | jq -r '.port // empty')
             if test "$action" = bound -a -n "$port"
                 ssh -O forward -L $port:localhost:$port "$selected_space.devpod" 2>/dev/null
-                echo "[devpod-gh] Port forwarding started: $port" >&2
+                if test $status -eq 0
+                    echo "[devpod-gh] Port forwarding started: $port" >&2
+                else
+                    echo "[devpod-gh] Failed to start port forwarding: $port" >&2
+                end
             else if test "$action" = unbound -a -n "$port"
                 ssh -O cancel -L $port:localhost:$port "$selected_space.devpod" 2>/dev/null
-                echo "[devpod-gh] Port forwarding stopped: $port" >&2
+                if test $status -eq 0
+                    echo "[devpod-gh] Port forwarding stopped: $port" >&2
+                else
+                    echo "[devpod-gh] Failed to stop port forwarding: $port" >&2
+                end
             end
         end
     end

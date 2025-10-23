@@ -9,6 +9,7 @@ function _devpod_reverseforward --description 'Reverse forwarding of selfhosted 
     echo "[devpod-gh] Ensuring workspace is up..." >&2
     command devpod up --open-ide false $selected_space >/dev/null 2>&1
 
+    # Note: Requires SSH ControlMaster for multiplexing (see README for configuration)
     if lsof -iTCP:1234 -sTCP:LISTEN -t &>/dev/null
         echo "[devpod-gh] Reverse forwarding lm studio..." >&2
         ssh -O forward -R 1234:localhost:1234 "$selected_space.devpod" 2>/dev/null
