@@ -15,9 +15,6 @@ function _devpod_portforward --description 'Manage automatic port forwarding for
     echo "[devpod-gh] Copying portmonitor script..." >&2
     scp -q $script_path $devpod_host:~/ 2>/dev/null
 
-    # Initialize associative array for port forward PIDs (using global variable)
-    set -g tunnel_pids
-
     echo "[devpod-gh] Port monitoring started for workspace: $selected_space" >&2
     echo "[devpod-gh] Starting SSH monitoring loop..." >&2
 
@@ -29,15 +26,11 @@ function _devpod_portforward --description 'Manage automatic port forwarding for
             set -l action (echo $line | jq -r '.action // empty')
             set -l port (echo $line | jq -r '.port // empty')
             if test "$action" = bound -a -n "$port"
-                ssh -L $port:localhost:$port "$selected_space.devpod" -N </dev/null >/dev/null 2>&1 &
-                set tunnel_pids[$port] $last_pid
-                echo "[devpod-gh] Port forwarding started: $port (PID: $last_pid)" >&2
+                ssh -O forward -L $port:localhost:$port "$selected_space.devpod" 2>/dev/null
+                echo "[devpod-gh] Port forwarding started: $port" >&2
             else if test "$action" = unbound -a -n "$port"
-                if set -q tunnel_pids[$port]
-                    echo "Stopping tunnel for port $port"
-                    kill $tunnel_pids[$port]
-                    set -e tunnel_pids[$port]
-                end
+                ssh -O cancel -L $port:localhost:$port "$selected_space.devpod" 2>/dev/null
+                echo "[devpod-gh] Port forwarding stopped: $port" >&2
             end
         end
     end
