@@ -59,7 +59,12 @@ function devpod --description 'DevPod wrapper with automatic GitHub token inject
     if test -n "$selected_space"
         set -l _pf_log (mktemp -t devpod-portforward.$selected_space.XXXXXX.log)
         set -l _rf_log (mktemp -t devpod-reverseforward.$selected_space.XXXXXX.log)
-        ssh -MNf "$selected_space.devpod"
+        # Create control master if it doesn't exist, otherwise reuse existing
+        if not ssh -O check "$selected_space.devpod" 2>/dev/null
+            ssh -MNf "$selected_space.devpod"
+        else
+            echo "[devpod-gh] Reusing existing control connection" >&2
+        end
         echo "[devpod-gh] Starting port forwarding monitor (log: $_pf_log)" >&2
         echo "[devpod-gh] Starting reverse forwarding monitor (log: $_rf_log)" >&2
         fish -c "_devpod_portforward $selected_space" >$_pf_log 2>&1 &
@@ -73,7 +78,5 @@ function devpod --description 'DevPod wrapper with automatic GitHub token inject
     test -n "$pf_pgid" && kill -- -$pf_pgid 2>/dev/null
     test -n "$rf_pgid" && kill -- -$rf_pgid 2>/dev/null
 
-    if test -n "$selected_space"
-        ssh -O exit "$selected_space.devpod"
-    end
+    # Keep control connection alive for reuse (ControlPersist handles cleanup)
 end
