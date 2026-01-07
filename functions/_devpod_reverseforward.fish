@@ -20,6 +20,8 @@ function _devpod_reverseforward --description 'Reverse forwarding of selfhosted 
         ssh -O forward -R 11434:localhost:11434 "$selected_space.devpod" 2>/dev/null
     end
 
-    # Forward devtools port
-    ssh -O forward -R 9222:localhost:9222 "$selected_space.devpod" 2>/dev/null
+    if lsof -iTCP:9222 -sTCP:LISTEN -t &>/dev/null
+        echo "[devpod-gh] Reverse forwarding devtools..." >&2
+        ssh -O forward -R 9222:localhost:9222 "$selected_space.devpod" 2>/dev/null
+    end
 end
