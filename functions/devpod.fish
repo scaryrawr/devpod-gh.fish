@@ -5,13 +5,13 @@ function devpod --description 'DevPod wrapper with automatic GitHub token inject
         return
     end
 
-    # Skip gum selection if --help or -h is present, or non-interactive SSH flags
+    # Skip interactive selection if --help or -h is present, or non-interactive SSH flags
     if string match -q -- '*--help*' $argv; or string match -q -- '*-h*' $argv; or string match -q -- '*-L*' $argv; or string match -q -- '*--forward-local*' $argv; or string match -q -- '*-R*' $argv; or string match -q -- '*--forward-remote*' $argv; or string match -q -- '*-D*' $argv; or string match -q -- '*--forward-socks*' $argv; or string match -q -- '*-W*' $argv; or string match -q -- '*--forward-stdio*' $argv; or string match -q -- '*--command*' $argv
         command devpod $argv
         return
     end
 
-    # Skip gum selection if not ssh command
+    # Skip interactive selection if not ssh command
     if not string match -q -- '*ssh*' $argv
         command devpod $argv
         return
@@ -43,9 +43,16 @@ function devpod --description 'DevPod wrapper with automatic GitHub token inject
         end
     end
 
-    # If no space found in args, prompt with gum
+    # If no space found in args, prompt with gum or fzf
     if test $space_found -eq 0 -a -n "$spaces"
-        set selected_space (printf '%s\n' $spaces | gum choose --header 'Please select a workspace from the list below')
+        if type -q gum
+            set selected_space (printf '%s\n' $spaces | gum choose --header 'Please select a workspace from the list below')
+        else if type -q fzf
+            set selected_space (printf '%s\n' $spaces | fzf --header 'Please select a workspace from the list below')
+        else
+            echo "[devpod-gh] Error: neither gum nor fzf is installed. Please install one to enable workspace selection." >&2
+            return 1
+        end
         if test -n "$selected_space"
             set -a args $selected_space
         else
