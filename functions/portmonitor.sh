@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# Ports reverse-forwarded into this workspace (from _devpod_reverseforward.fish).
+# These are host-side services made available inside the container via SSH -R and
+# must not be forwarded back out.
+declare -A reverse_forwarded_ports=([1234]=1 [9222]=1 [11434]=1)
+
 # Associative array to store currently bound ports
 # Key: "protocol:port", Value: 1
 declare -A bound_ports
@@ -67,8 +72,8 @@ while true; do
     # Extract port from LocalAddress:Port (it's the part after the last colon)
     port="${local_address_port##*:}"
 
-    # Validate port is a number and filter to non-problematic range (need to investigate futher)
-    if [[ "$port" =~ ^[0-9]+$ ]] && [ "$port" -gt 2999 ] && [ "$port" -lt 10000 ]; then
+    # Validate port is a number, filter to non-problematic range, and skip reverse-forwarded ports
+    if [[ "$port" =~ ^[0-9]+$ ]] && [ "$port" -gt 2999 ] && [ "$port" -lt 10000 ] && [[ -z "${reverse_forwarded_ports[$port]}" ]]; then
       key="${protocol}:${port}"
       current_ports_map["$key"]=1
 
