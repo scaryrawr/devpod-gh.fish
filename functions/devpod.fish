@@ -62,16 +62,59 @@ function devpod --description 'DevPod wrapper with automatic GitHub token inject
 
     set -l pf_pgid
     set -l rf_pgid
+    set -l browser_pid
+    set -l browser_socket
+    set -l func_dir (dirname (status --current-filename))
+    set -l devpod_host "$selected_space.devpod"
+
     # Copy and start portmonitor.sh on the devpod if we have a selected_space
     if test -n "$selected_space"
         set -l _pf_log (mktemp -t devpod-portforward.$selected_space.XXXXXX.log)
         set -l _rf_log (mktemp -t devpod-reverseforward.$selected_space.XXXXXX.log)
         # Create control master if it doesn't exist, otherwise reuse existing
-        if not ssh -O check "$selected_space.devpod" 2>/dev/null
-            ssh -MNf "$selected_space.devpod"
+        if not ssh -O check "$devpod_host" 2>/dev/null
+            ssh -MNf "$devpod_host"
         else
             echo "[devpod-gh] Reusing existing control connection" >&2
         end
+
+        # Start local browser service and reverse-forward into the codespace
+        if type -q python3
+            set -l _port_file (mktemp -t devpod-browser-port.XXXXXX)
+            python3 "$func_dir/browser-service.py" >"$_port_file" 2>/dev/null &
+            set browser_pid $last_pid
+
+            set -l browser_port ""
+            for _i in (seq 10)
+                set browser_port (string trim (cat "$_port_file" 2>/dev/null))
+                test -n "$browser_port" && break
+                sleep 0.5
+            end
+            rm -f "$_port_file"
+
+            if test -n "$browser_port"
+                set browser_socket "/tmp/devpod-browser-"(random)".sock"
+                # Upload browser scripts and set up xdg-open symlink
+                scp -q "$func_dir/browser-opener.sh" "$func_dir/xdg-open.sh" "$devpod_host:~/" 2>/dev/null
+                ssh "$devpod_host" 'chmod +x ~/browser-opener.sh ~/xdg-open.sh; sudo ln -sf ~/xdg-open.sh /usr/local/bin/xdg-open 2>/dev/null; sudo ln -sf ~/browser-opener.sh /usr/local/bin/browser-opener 2>/dev/null; for s in /tmp/devpod-browser-*.sock; do [ -S "$s" ] || continue; curl -s --max-time 1 --unix-socket "$s" "http://localhost/" >/dev/null 2>&1 || rm -f "$s"; done; true' 2>/dev/null
+                # Reverse-forward Unix socket into the codespace
+                ssh -O forward -R "$browser_socket:localhost:$browser_port" "$devpod_host" 2>/dev/null
+                if test $status -eq 0
+                    echo "[devpod-gh] Browser service started (port $browser_port → $browser_socket)" >&2
+                    set -a args --set-env
+                    set -a args BROWSER=/usr/local/bin/browser-opener
+                else
+                    echo "[devpod-gh] Warning: Failed to forward browser socket" >&2
+                end
+            else
+                echo "[devpod-gh] Warning: Failed to start browser service" >&2
+                kill $browser_pid 2>/dev/null
+                set browser_pid ""
+            end
+        else
+            echo "[devpod-gh] Warning: python3 not found, browser forwarding disabled" >&2
+        end
+
         echo "[devpod-gh] Starting port forwarding monitor (log: $_pf_log)" >&2
         echo "[devpod-gh] Starting reverse forwarding monitor (log: $_rf_log)" >&2
         fish -c "_devpod_portforward $selected_space" >$_pf_log 2>&1 &
@@ -84,6 +127,10 @@ function devpod --description 'DevPod wrapper with automatic GitHub token inject
 
     test -n "$pf_pgid" && kill -- -$pf_pgid 2>/dev/null
     test -n "$rf_pgid" && kill -- -$rf_pgid 2>/dev/null
+    test -n "$browser_pid" && kill $browser_pid 2>/dev/null
+    if test -n "$browser_socket"
+        ssh -O cancel -R "$browser_socket" "$devpod_host" 2>/dev/null
+    end
 
     # Keep control connection alive for reuse (ControlPersist handles cleanup)
 end

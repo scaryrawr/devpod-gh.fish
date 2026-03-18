@@ -16,6 +16,7 @@ This is a simple function wrapper around [devpod](https://github.com/loft-sh/dev
 - [jq](https://jqlang.github.io/jq/) - JSON processing for port monitoring
 - `ssh`/`scp` - Remote connection and file transfer
 - `stdbuf` - Unbuffered output handling for port monitoring
+- `python3` - Local browser service (optional; browser forwarding disabled if missing)
 
 ## Installation
 
@@ -65,3 +66,33 @@ It magically enables the [github cli](https://github.com/devcontainers/features/
 The plugin automatically monitors and forwards ports that are bound inside your devpod workspace. When an application starts listening on a port inside the devpod, it will be automatically forwarded to your local machine on the same port.
 
 This uses a background port monitoring process that watches for port binding events and establishes SSH tunnels as needed. The port forwarding is cleaned up automatically when you disconnect.
+
+### Browser Opening (BROWSER + xdg-open shim)
+
+When connecting to a devpod, the plugin automatically:
+
+1. Starts a local browser service on your machine
+2. Reverse-forwards a Unix socket into the codespace so the devpod can reach it
+3. Uploads `browser-opener.sh` and an `xdg-open` shim to the codespace
+4. Sets `BROWSER` so CLI tools (e.g. `gh`, `npm open`) open URLs on your local machine
+
+**URL routing (priority order):**
+- devpod browser socket (reverse-forwarded from local machine)
+- `$BROWSER` environment variable
+- `code --open-url` (VS Code remote)
+- `/usr/bin/xdg-open` (real binary, if available)
+- Silent no-op
+
+**xdg-open file handling:**
+The `xdg-open` shim also handles local file opens with environment-aware behaviour:
+- **In tmux**: opens in a vertical split pane
+- **SSH without tmux**: runs viewer inline (blocking)
+- **Non-SSH**: delegates to real `xdg-open` or VS Code
+
+File-type viewers (graceful fallback):
+- Images (jpg/png/gif/…) → `chafa`
+- PDFs → `pdftotext` + `less`, or `pdfinfo`
+- Markdown → `glow` → `bat` → `$EDITOR`
+- Everything else → `$EDITOR` → `vi`
+
+> **Requires:** `python3` on the local machine (for the browser service). If not available, browser forwarding is skipped and everything else continues to work.
